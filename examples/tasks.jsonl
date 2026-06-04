@@ -1,0 +1,5 @@
+{"id":"overview-001","question":"What does this project do?","expected_intent":"project_overview","expected_files":["README.md"],"answer_must_contain":["Indexed","Key files"]}
+{"id":"setup-001","question":"How do I install and run this project locally?","expected_intent":"setup_help","expected_files":["README.md"],"answer_must_contain":["repo.search_code","issue.triage"]}
+{"id":"code-001","question":"Where is the command line entrypoint implemented?","expected_intent":"code_question","expected_files":["src/openrepo_agent/cli.py"],"answer_must_contain":["repo.read_file","argparse"]}
+{"id":"bug-001","question":"I get an import error when running the CLI. Triage this issue.","expected_intent":"bug_triage","expected_files":["README.md"],"answer_must_contain":["Suggested label: bug","repo.search_code"]}
+{"id":"patch-001","question":"Please propose a patch to add a failing test for the CLI parser.","expected_intent":"patch_request","expected_files":["src/openrepo_agent/cli.py"],"answer_must_contain":["patch.propose","Request human approval"]}
