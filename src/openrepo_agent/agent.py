@@ -95,7 +95,7 @@ class OpenRepoSupportAgent:
         ]
         explicit_path = self._find_explicit_path_file(question)
         if explicit_path:
-            results.append(self.registry.call("repo.read_file", path=explicit_path, max_lines=120))
+            results.append(self.registry.call("repo.read_file", path=explicit_path, max_lines=240))
             return results
         entrypoint = self._find_entrypoint_file(question)
         if entrypoint:

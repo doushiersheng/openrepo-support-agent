@@ -7,7 +7,7 @@ than opaque agent magic.
 
 1. The user submits a repository support question.
 2. `IntentRouter` classifies the request into an operational intent.
-3. `OpenRepoSupportAgent` runs either the sequential workflow or LangGraph
+3. `OpenRepoSupportAgent` runs the sequential, multi-agent, or LangGraph
    workflow.
 4. The workflow selects a small tool plan for that intent.
 5. `ToolRegistry` executes tools and logs every call.
@@ -40,7 +40,22 @@ findings. The summary metrics are:
 - average tool calls
 - failures by category
 
-## Future LangGraph Mapping
+## Multi-Agent Workflow
+
+The `multi_agent` workflow keeps the runtime deterministic but makes role
+boundaries visible in the event log:
+
+- `RouterAgent` routes the request and records confidence/rationale.
+- `RepoResearchAgent` selects repository retrieval and citation gathering.
+- `IssueTriageAgent` handles setup, bug, and issue routing.
+- `PatchPlannerAgent` prepares patch proposals before any write action.
+- `SafetyReviewerAgent` checks whether approval-gated tools are involved.
+- `MonitorAgent` inspects the final answer, citations, and tool results.
+
+Each role writes a `multi_agent_step` event. This makes the collaboration trace
+auditable without requiring multiple paid LLM calls.
+
+## LangGraph Mapping
 
 The current modules map cleanly to a LangGraph workflow, and the CLI supports
 this path with `--workflow langgraph`:

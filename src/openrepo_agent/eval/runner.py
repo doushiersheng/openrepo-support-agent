@@ -53,15 +53,25 @@ def load_tasks(path: str | Path) -> list[dict[str, Any]]:
 
 
 class EvalRunner:
-    def __init__(self, repo_path: str | Path, monitor: MonitorAgent | None = None) -> None:
+    def __init__(
+        self,
+        repo_path: str | Path,
+        monitor: MonitorAgent | None = None,
+        workflow: str = "sequential",
+    ) -> None:
         self.repo_path = Path(repo_path)
         self.monitor = monitor or MonitorAgent()
+        self.workflow = workflow
 
     def run(self, tasks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], EvalMetrics]:
         rows = []
         for task in tasks:
             event_log = EventLog(run_id=f"eval-{task['id']}")
-            agent = OpenRepoSupportAgent(self.repo_path, event_log=event_log)
+            agent = OpenRepoSupportAgent(
+                self.repo_path,
+                event_log=event_log,
+                workflow=self.workflow,
+            )
             response = agent.answer(task["question"])
             expected_intent = task.get("expected_intent")
             report = self.monitor.inspect(response, expected_intent=expected_intent)
@@ -121,13 +131,19 @@ def build_parser() -> argparse.ArgumentParser:
         default=".openrepo-agent/eval_report.json",
         help="Where to write the JSON evaluation report.",
     )
+    parser.add_argument(
+        "--workflow",
+        choices=["sequential", "multi_agent", "langgraph"],
+        default="sequential",
+        help="Workflow runtime to evaluate.",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
     tasks = load_tasks(args.tasks)
-    rows, metrics = EvalRunner(args.repo).run(tasks)
+    rows, metrics = EvalRunner(args.repo, workflow=args.workflow).run(tasks)
     write_report(rows, metrics, Path(args.output))
 
     print(f"Evaluated {metrics.total} tasks")

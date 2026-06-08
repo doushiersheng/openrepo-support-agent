@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--workflow",
-        choices=["sequential", "langgraph"],
+        choices=["sequential", "multi_agent", "langgraph"],
         default="sequential",
         help="Workflow runtime to use.",
     )

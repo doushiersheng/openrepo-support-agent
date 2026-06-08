@@ -1,7 +1,7 @@
 # OpenRepo Support Agent
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-16%20passed-brightgreen)](#evaluation)
+[![Tests](https://img.shields.io/badge/tests-17%20passed-brightgreen)](#evaluation)
 [![Benchmark](https://img.shields.io/badge/benchmark-20%20tasks-brightgreen)](#evaluation)
 
 An end-to-end agent system for open-source project support. It indexes a local
@@ -9,8 +9,8 @@ repository, routes user intent, calls MCP-style tools, keeps an auditable event
 log, and answers with file citations.
 
 This is built as a portfolio-grade agent runtime, not a one-prompt chatbot. The
-core path is deterministic and inspectable, while LangGraph and DeepSeek are
-optional layers.
+core path is deterministic and inspectable, while the multi-agent workflow,
+LangGraph, and DeepSeek are optional layers.
 
 Real LLM calls are optional. The default mode is deterministic and works
 without an API key. If `DEEPSEEK_API_KEY` is set, the CLI can use DeepSeek to
@@ -54,6 +54,8 @@ Hardened benchmark: `benchmarks/openrepo_support_tasks.jsonl`
 - Event audit log for every route decision and tool call
 - Evaluation runner for end-to-end support tasks
 - Rule-based monitor for failed-session attribution
+- Multi-agent workflow with router, repository researcher, issue triage,
+  patch planner, safety reviewer, and monitor roles
 - Optional LangGraph workflow runtime
 - Optional DeepSeek/OpenAI-compatible LLM answer enhancement
 - SQLite-backed sessions, turns, event logs, and memory items
@@ -114,6 +116,16 @@ Run through LangGraph:
 python -m openrepo_agent.cli --repo . --workflow langgraph "Where is the command line entrypoint?"
 ```
 
+Run the role-based multi-agent workflow:
+
+```bash
+python -m openrepo_agent.cli --repo . --workflow multi_agent \
+  "Where is the command line entrypoint implemented?"
+```
+
+This prints the same answer/citation surface while the event log records each
+role decision as `multi_agent_step`.
+
 Use DeepSeek for the final answer synthesis:
 
 ```bash
@@ -164,8 +176,9 @@ See the current summary in `docs/eval_report.md`.
 flowchart TD
     U["User question"] --> R["Intent Router"]
     R --> P["Support Agent"]
-    P --> W["Sequential or LangGraph Workflow"]
-    W --> T["Tool Registry"]
+    P --> W["Sequential, Multi-Agent, or LangGraph Workflow"]
+    W --> G["Router / Research / Triage / Patch / Safety Roles"]
+    G --> T["Tool Registry"]
     T --> S["repo.search_code"]
     T --> F["repo.read_file"]
     T --> I["issue.triage"]
@@ -181,7 +194,17 @@ flowchart TD
 ```
 
 The default path uses deterministic routing and retrieval so behavior is
-inspectable. The optional LangGraph workflow uses the same primitives:
+inspectable. The multi-agent workflow keeps the same tools but records explicit
+role decisions:
+
+- RouterAgent routes the request.
+- RepoResearchAgent gathers repository context and citations.
+- IssueTriageAgent handles setup, bug, and issue classification.
+- PatchPlannerAgent prepares patch proposals without writing files.
+- SafetyReviewerAgent checks whether risky tools need approval.
+- MonitorAgent inspects the final response and event trail.
+
+The optional LangGraph workflow uses the same primitives:
 
 - Router node
 - Planner node
@@ -190,7 +213,7 @@ inspectable. The optional LangGraph workflow uses the same primitives:
 - Monitor node
 - Evaluation node
 
-The current code already supports a LangGraph path via `--workflow langgraph`.
+The current code supports `--workflow multi_agent` and `--workflow langgraph`.
 The sequential path remains the default so tests and demos are reproducible.
 
 ## Evaluation

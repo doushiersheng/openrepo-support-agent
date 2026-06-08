@@ -8,6 +8,8 @@ Initial portfolio release.
 - Intent routing across overview, setup, code, bug, issue, and patch workflows
 - MCP-style tool registry
 - Sequential and optional LangGraph workflow runtimes
+- Role-based multi-agent workflow with auditable routing, research, patch
+  planning, safety review, and monitoring steps
 - Optional DeepSeek-compatible final answer synthesis
 - SQLite persistence for sessions, turns, events, memory, and approvals
 - Conversation memory for user environment, errors, and attempted commands

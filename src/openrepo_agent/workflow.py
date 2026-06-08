@@ -63,6 +63,126 @@ class SequentialWorkflow:
         return response
 
 
+class MultiAgentWorkflow:
+    def __init__(self, agent: "OpenRepoSupportAgent") -> None:
+        self.agent = agent
+        self.trace: list[str] = []
+
+    def run(self, question: str) -> AgentResponse:
+        self.trace = []
+        self.agent.event_log.record("user_question", question=question)
+        self.agent.event_log.record(
+            "memory_loaded",
+            item_count=len(self.agent.memory.items),
+        )
+
+        intent = self.agent.router.route(question)
+        self.agent.event_log.record(
+            "intent_routed",
+            intent=intent.name,
+            confidence=intent.confidence,
+            rationale=intent.rationale,
+            workflow="multi_agent",
+        )
+        self._record_step(
+            "RouterAgent",
+            f"Routed request to {intent.name}.",
+            confidence=intent.confidence,
+            rationale=intent.rationale,
+        )
+        self._record_role_plan(intent.name)
+
+        tool_results = self.agent._run_tools(question, intent.name)
+        self._record_step(
+            "ToolExecutorAgent",
+            "Executed the intent-specific tool plan.",
+            tools=[result.name for result in tool_results],
+            failed_tools=[result.name for result in tool_results if not result.ok],
+        )
+        self._record_safety_review(tool_results)
+
+        answer = self.agent._compose_answer(question, intent.name, tool_results)
+        answer = self._with_trace(answer)
+        citations = self.agent._collect_citations(tool_results)
+        response = AgentResponse(
+            question=question,
+            intent=intent.name,
+            answer=answer,
+            citations=citations,
+            tool_results=tool_results,
+            run_id=self.agent.event_log.run_id,
+        )
+        report = MonitorAgent().inspect(response)
+        self.agent.event_log.record(
+            "monitor_inspected",
+            status=report.status,
+            findings=[finding.category for finding in report.findings],
+        )
+        self._record_step(
+            "MonitorAgent",
+            f"Inspected the final response and returned {report.status}.",
+            findings=[finding.category for finding in report.findings],
+        )
+        self.agent.event_log.record(
+            "answer_composed",
+            answer_preview=answer[:500],
+            citation_count=len(citations),
+        )
+        return response
+
+    def _record_role_plan(self, intent: str) -> None:
+        if intent in {"project_overview", "code_question", "setup_help"}:
+            self._record_step(
+                "RepoResearchAgent",
+                "Selected repository retrieval and citation gathering.",
+                intent=intent,
+            )
+        if intent in {"setup_help", "bug_triage", "issue_triage"}:
+            self._record_step(
+                "IssueTriageAgent",
+                "Selected support classification and follow-up question planning.",
+                intent=intent,
+            )
+        if intent == "patch_request":
+            self._record_step(
+                "PatchPlannerAgent",
+                "Selected patch proposal planning before any write action.",
+                intent=intent,
+            )
+
+    def _record_safety_review(self, tool_results: list[ToolResult]) -> None:
+        risky_tools = [
+            result.metadata.get("tool")
+            for result in tool_results
+            if result.name == "approval.request" and result.metadata.get("tool")
+        ]
+        if risky_tools:
+            self._record_step(
+                "SafetyReviewerAgent",
+                "Detected risky tool usage and required human approval.",
+                risky_tools=risky_tools,
+            )
+            return
+        self._record_step(
+            "SafetyReviewerAgent",
+            "No approval-gated write or command execution was requested.",
+            risky_tools=[],
+        )
+
+    def _record_step(self, role: str, decision: str, **metadata: Any) -> None:
+        self.trace.append(f"{role}: {decision}")
+        self.agent.event_log.record(
+            "multi_agent_step",
+            role=role,
+            decision=decision,
+            **metadata,
+        )
+
+    def _with_trace(self, answer: str) -> str:
+        trace = "\n".join(f"- {item}" for item in self.trace)
+        return f"Multi-agent trace:\n{trace}\n\n{answer}"
+
+
 class LangGraphWorkflow:
     def __init__(self, agent: "OpenRepoSupportAgent") -> None:
         self.agent = agent
@@ -144,9 +264,14 @@ class LangGraphWorkflow:
         return {"monitor_report": report}
 
 
-def build_workflow(agent: "OpenRepoSupportAgent", workflow: str) -> SequentialWorkflow | LangGraphWorkflow:
+def build_workflow(
+    agent: "OpenRepoSupportAgent",
+    workflow: str,
+) -> SequentialWorkflow | MultiAgentWorkflow | LangGraphWorkflow:
     if workflow == "sequential":
         return SequentialWorkflow(agent)
+    if workflow == "multi_agent":
+        return MultiAgentWorkflow(agent)
     if workflow == "langgraph":
         return LangGraphWorkflow(agent)
     raise ValueError(f"Unsupported workflow: {workflow}")
