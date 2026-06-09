@@ -49,6 +49,8 @@ Hardened benchmark: `benchmarks/openrepo_support_tasks.jsonl`
 - Repo indexing for README, docs, source code, config, and tests
 - Intent routing for project overview, setup, code questions, bug reports,
   issue triage, and patch requests
+- Local Web Demo for intent, role trace, tool calls, citations, monitor status,
+  and event log inspection
 - MCP-style `ToolRegistry` with typed tool inputs and consistent outputs
 - Code search, file reading, issue triage, and patch suggestion tools
 - Event audit log for every route decision and tool call
@@ -63,7 +65,41 @@ Hardened benchmark: `benchmarks/openrepo_support_tasks.jsonl`
 - Human approval workflow for risky tools such as file writes
 - CLI demo that can run against any local repository
 
+## Quick Start
+
+```bash
+cd openrepo-support-agent
+python -m pip install -e .
+python -m openrepo_agent.cli --repo . "What does this project do?"
+python -m openrepo_agent.cli --repo . "Where is the command line entrypoint?"
+python -m openrepo_agent.cli --repo . "I get an import error when running the CLI. Triage this issue."
+```
+
+The CLI prints the detected intent, answer, citations, tool calls, and audit
+events. By default it writes run logs to `.openrepo-agent/runs/`.
+
 ## Demo
+
+Launch the local Web Demo:
+
+```bash
+openrepo-agent-web --repo .
+```
+
+Then open `http://127.0.0.1:8765`. The page runs the multi-agent workflow by
+default and shows:
+
+- detected intent
+- role-by-role multi-agent trace
+- MCP-style tool calls and outputs
+- file citations
+- monitor status
+- raw event log for auditability
+
+If the package is not installed yet, run `python -m pip install -e .` first.
+For quick source-tree testing, use `PYTHONPATH=src python -m openrepo_agent.web --repo .`
+on macOS/Linux or `$env:PYTHONPATH="src"; python -m openrepo_agent.web --repo .`
+on Windows PowerShell.
 
 Code-aware question:
 
@@ -96,19 +132,6 @@ python -m openrepo_agent.cli --repo . --session-id demo \
 python -m openrepo_agent.cli --repo . --session-id demo --list-approvals
 python -m openrepo_agent.cli --repo . --approve 1
 ```
-
-## Quick Start
-
-```bash
-cd openrepo-support-agent
-python -m pip install -e .
-python -m openrepo_agent.cli --repo . "What does this project do?"
-python -m openrepo_agent.cli --repo . "Where is the command line entrypoint?"
-python -m openrepo_agent.cli --repo . "I get an import error when running the CLI. Triage this issue."
-```
-
-The CLI prints the detected intent, answer, citations, tool calls, and audit
-events. By default it writes run logs to `.openrepo-agent/runs/`.
 
 Run through LangGraph:
 
@@ -266,6 +289,7 @@ openrepo-support-agent/
   src/openrepo_agent/
     agent.py
     cli.py
+    web.py
     events.py
     indexer.py
     intent.py

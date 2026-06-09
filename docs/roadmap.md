@@ -8,6 +8,7 @@
 - Search/read/triage/patch proposal tools
 - Event audit log
 - CLI demo
+- Local Web Demo
 - Evaluation runner
 - Rule-based monitor
 
@@ -31,8 +32,8 @@
 
 ## Milestone 4: Product Surface
 
-- FastAPI server
-- Minimal web UI
+- FastAPI server for deployment-oriented demos
+- Approval review page
 - Saved conversations
 - Exportable issue triage reports
-- Approval review page
+- Demo screenshots or GIFs for the README

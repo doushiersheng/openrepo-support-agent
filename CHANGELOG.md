@@ -5,6 +5,8 @@
 Initial portfolio release.
 
 - Local repo indexing with citations
+- Local Web Demo for inspecting intent, role trace, tool calls, citations,
+  monitor status, and event logs
 - Intent routing across overview, setup, code, bug, issue, and patch workflows
 - MCP-style tool registry
 - Sequential and optional LangGraph workflow runtimes

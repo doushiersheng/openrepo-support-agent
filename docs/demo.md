@@ -2,7 +2,30 @@
 
 Use these commands for a quick portfolio walkthrough.
 
-## 1. Code-Aware Support
+## 1. Web Demo
+
+```bash
+openrepo-agent-web --repo .
+```
+
+Open `http://127.0.0.1:8765` and run:
+
+```text
+Where is the command line entrypoint implemented?
+```
+
+What to point out:
+
+- the request is routed to `code_question`
+- the page shows RouterAgent, RepoResearchAgent, ToolExecutorAgent,
+  SafetyReviewerAgent, and MonitorAgent decisions
+- tool calls show exactly which MCP-style tools were used
+- citations show the file and line ranges used as evidence
+- the raw event log proves the run is auditable
+
+If the command is not available yet, run `python -m pip install -e .` first.
+
+## 2. Code-Aware Support
 
 ```bash
 python -m openrepo_agent.cli --repo . \
@@ -16,7 +39,7 @@ What to point out:
 - explicit code questions read `src/openrepo_agent/cli.py`
 - answers include file citations
 
-## 2. Multi-Turn Memory
+## 3. Multi-Turn Memory
 
 ```bash
 python -m openrepo_agent.cli --repo . --session-id demo --show-memory \
@@ -31,7 +54,7 @@ What to point out:
 - memory tracks user environment, errors, and attempted commands
 - memory is extracted from user text only
 
-## 3. Multi-Agent Runtime
+## 4. Multi-Agent Runtime
 
 ```bash
 python -m openrepo_agent.cli --repo . --workflow multi_agent \
@@ -45,7 +68,7 @@ What to point out:
 - Router, repository research, safety review, and monitor roles are explicit
 - the same citation and tool execution path remains reproducible
 
-## 4. Human Approval
+## 5. Human Approval
 
 ```bash
 python -m openrepo_agent.cli --repo . --session-id demo \
@@ -60,7 +83,7 @@ What to point out:
 - file write is not executed silently
 - approval state is persisted in SQLite
 
-## 5. Hardened Benchmark
+## 6. Hardened Benchmark
 
 ```bash
 python -m openrepo_agent.eval.runner --repo .

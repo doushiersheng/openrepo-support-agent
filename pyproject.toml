@@ -17,6 +17,7 @@ llm = ["requests>=2.31"]
 
 [project.scripts]
 openrepo-agent = "openrepo_agent.cli:main"
+openrepo-agent-web = "openrepo_agent.web:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
