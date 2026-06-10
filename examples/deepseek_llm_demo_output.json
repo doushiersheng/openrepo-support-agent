@@ -1,0 +1,74 @@
+{
+  "run_id": "demo-llm-sample",
+  "question": "How do I install and run this project?",
+  "intent": "setup_help",
+  "answer_preview": "Install the package in editable mode with `python -m pip install -e .`, then run `python -m openrepo_agent.cli --repo . \"What does this project do?\"`. The agent searched the repository setup context and preserved citations from README.md.",
+  "citations": [
+    {
+      "path": "README.md",
+      "line_start": 76,
+      "line_end": 83,
+      "snippet": "cd openrepo-support-agent\npython -m pip install -e .\npython -m openrepo_agent.cli --repo . \"What does this project do?\""
+    }
+  ],
+  "tool_results": [
+    {
+      "name": "repo.search_code",
+      "ok": true,
+      "metadata": {
+        "query": "install setup run How do I install and run this project?",
+        "hit_count": 5
+      }
+    },
+    {
+      "name": "issue.triage",
+      "ok": true,
+      "metadata": {
+        "suggested_label": "question"
+      }
+    }
+  ],
+  "events": [
+    {
+      "type": "user_question",
+      "payload": {
+        "question": "How do I install and run this project?"
+      }
+    },
+    {
+      "type": "intent_routed",
+      "payload": {
+        "intent": "setup_help",
+        "workflow": "sequential"
+      }
+    },
+    {
+      "type": "tool_called",
+      "payload": {
+        "tool": "repo.search_code",
+        "ok": true
+      }
+    },
+    {
+      "type": "tool_called",
+      "payload": {
+        "tool": "issue.triage",
+        "ok": true
+      }
+    },
+    {
+      "type": "llm_enhanced_answer",
+      "payload": {
+        "provider": "DeepSeekLLM"
+      }
+    },
+    {
+      "type": "monitor_inspected",
+      "payload": {
+        "status": "pass",
+        "findings": []
+      }
+    }
+  ],
+  "note": "Sanitized sample. No API key, provider request id, or raw provider response is stored here."
+}

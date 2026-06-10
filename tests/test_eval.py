@@ -2,6 +2,7 @@ from pathlib import Path
 
 from openrepo_agent.eval.runner import (
     EvalRunner,
+    detected_failure_categories,
     load_tasks,
     score_answer_terms,
     score_expected_files,
@@ -53,3 +54,35 @@ def test_score_answer_terms_requires_all_terms() -> None:
     passed, matched = score_answer_terms("Use issue.triage and repo.search_code", ["issue.triage", "missing"])
     assert not passed
     assert matched == ["issue.triage"]
+
+
+def test_detected_failure_categories_combines_monitor_and_scoring_failures() -> None:
+    categories = detected_failure_categories(
+        [{"category": "intent_mismatch"}],
+        retrieval_labeled=True,
+        retrieval_hit=False,
+        answer_labeled=True,
+        answer_check_passed=False,
+    )
+
+    assert categories == ["answer_check_failed", "intent_mismatch", "retrieval_miss"]
+
+
+def test_eval_runner_tracks_expected_failure_detection(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("# Demo\n\nRun with python -m demo.", encoding="utf-8")
+    tasks = [
+        {
+            "id": "negative",
+            "question": "What does this project do?",
+            "expected_intent": "bug_triage",
+            "expected_files": ["README.md"],
+            "answer_must_contain": ["Key files"],
+            "expected_failure_categories": ["intent_mismatch"],
+        }
+    ]
+
+    rows, metrics = EvalRunner(tmp_path).run(tasks)
+
+    assert "intent_mismatch" in rows[0]["detected_failure_categories"]
+    assert metrics.expected_failure_detection_rate == 1.0
+    assert metrics.failures_by_category["intent_mismatch"] == 1

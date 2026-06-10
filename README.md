@@ -1,7 +1,7 @@
 # OpenRepo Support Agent
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-17%20passed-brightgreen)](#evaluation)
+[![Tests](https://img.shields.io/badge/tests-20%20passed-brightgreen)](#evaluation)
 [![Benchmark](https://img.shields.io/badge/benchmark-20%20tasks-brightgreen)](#evaluation)
 
 An end-to-end agent system for open-source project support. It indexes a local
@@ -16,6 +16,37 @@ Real LLM calls are optional. The default mode is deterministic and works
 without an API key. If `DEEPSEEK_API_KEY` is set, the CLI can use DeepSeek to
 enhance the final answer while keeping the same tool and audit trail.
 
+![OpenRepo Support Agent web demo](docs/assets/demo-preview.png)
+
+## Demo Preview
+
+The local Web Demo turns each run into an inspectable trace. It shows the
+detected intent, multi-agent role decisions, MCP-style tool calls, file
+citations, monitor status, and raw event log.
+
+Three-minute walkthrough:
+
+```bash
+cd openrepo-support-agent
+python -m pip install -e .
+openrepo-agent-web --repo .
+```
+
+Open `http://127.0.0.1:8765` and ask:
+
+```text
+Where is the command line entrypoint implemented?
+```
+
+Expected surface:
+
+- intent: `code_question`
+- roles: RouterAgent, RepoResearchAgent, ToolExecutorAgent,
+  SafetyReviewerAgent, MonitorAgent
+- tools: `repo.search_code`, `repo.read_file`
+- citations: file paths and line ranges from the indexed repository
+- monitor: pass/fail status for answer quality and trace integrity
+
 ## Why This Project
 
 Open-source support is a realistic agent scenario: users ask setup questions,
@@ -28,6 +59,33 @@ guidance. A useful support agent needs more than RAG:
 - approval gates for risky tools
 - evaluation that measures routing, retrieval, answer checks, tools, and monitor
   findings
+
+This is not a plain RAG chatbot. Retrieval is only one tool in a larger runtime:
+the agent routes intent, executes typed tools, records an audit trail, preserves
+session memory, gates risky writes through approval, and evaluates each run with
+task-level metrics.
+
+## Optional Real LLM Synthesis
+
+The default runtime is deterministic, so tests, demos, and benchmark runs work
+without network access or API keys. When `DEEPSEEK_API_KEY` is configured,
+OpenRepo can call a DeepSeek/OpenAI-compatible endpoint for final answer
+synthesis:
+
+```bash
+python -m pip install -e ".[llm]"
+$env:DEEPSEEK_API_KEY="sk-..."
+python -m openrepo_agent.cli --repo . --use-llm \
+  "How do I install and run this project?"
+```
+
+The LLM receives bounded tool context and the deterministic fallback answer. It
+does not replace routing, tool execution, citations, approval gates, monitoring,
+or evaluation. Successful LLM calls are recorded as `llm_enhanced_answer` events;
+failed calls fall back to the deterministic answer and record `llm_error`.
+
+See [LLM demo](docs/llm_demo.md) and
+[sanitized sample output](examples/deepseek_llm_demo_output.json).
 
 ## Current Results
 
@@ -42,7 +100,24 @@ Hardened benchmark: `benchmarks/openrepo_support_tasks.jsonl`
 | Retrieval hit rate | 100.00% |
 | Answer check pass rate | 100.00% |
 | Monitor pass rate | 100.00% |
+| Expected failure detection rate | 0.00% |
 | Average tool calls | 1.85 |
+
+Negative-case benchmark: `benchmarks/openrepo_negative_cases.jsonl`
+
+| Metric | Value |
+|---|---:|
+| Tasks | 5 |
+| Intent accuracy | 80.00% |
+| Retrieval hit rate | 40.00% |
+| Answer check pass rate | 40.00% |
+| Monitor pass rate | 80.00% |
+| Expected failure detection rate | 100.00% |
+
+The negative-case suite intentionally includes wrong labels, impossible file
+targets, mismatched citation expectations, and missing rubric terms. It is used
+to verify that the evaluator can identify failure categories such as
+`intent_mismatch`, `retrieval_miss`, and `answer_check_failed`.
 
 ## Features
 
@@ -55,6 +130,7 @@ Hardened benchmark: `benchmarks/openrepo_support_tasks.jsonl`
 - Code search, file reading, issue triage, and patch suggestion tools
 - Event audit log for every route decision and tool call
 - Evaluation runner for end-to-end support tasks
+- Negative-case benchmark for failure detection and attribution
 - Rule-based monitor for failed-session attribution
 - Multi-agent workflow with router, repository researcher, issue triage,
   patch planner, safety reviewer, and monitor roles
@@ -252,11 +328,12 @@ Each run records:
 - expected vs actual intent
 - expected files vs cited files
 - required answer terms vs matched answer terms
+- expected vs detected failure categories for negative cases
 - tool calls and tool success rate
 - citation count
 - monitor status
 - failure categories such as `intent_mismatch`, `tool_error`, and
-  `missing_citation`
+  `missing_citation`, `retrieval_miss`, and `answer_check_failed`
 
 This makes the project easier to discuss in interviews: the agent is not only
 able to answer, it can also measure and explain where it fails.
@@ -279,6 +356,7 @@ able to answer, it can also measure and explain where it fails.
 - [Architecture](docs/architecture.md)
 - [Evaluation](docs/evaluation.md)
 - [Evaluation report](docs/eval_report.md)
+- [LLM demo](docs/llm_demo.md)
 - [Persistence and memory](docs/persistence.md)
 - [Roadmap](docs/roadmap.md)
 
@@ -306,13 +384,19 @@ openrepo-support-agent/
       registry.py
       repo_tools.py
   docs/
+    assets/
+      demo-preview.png
     architecture.md
     evaluation.md
     eval_report.md
+    llm_demo.md
     persistence.md
     roadmap.md
+  examples/
+    deepseek_llm_demo_output.json
   benchmarks/
     openrepo_support_tasks.jsonl
+    openrepo_negative_cases.jsonl
   tests/
 ```
 
@@ -330,4 +414,4 @@ silently mutating the repository.
 
 - Add command execution with approval and sandbox policy
 - Add FastAPI service and minimal web UI
-- Expand benchmark to 30+ tasks with negative cases
+- Expand benchmark to 30+ tasks with harder negative cases

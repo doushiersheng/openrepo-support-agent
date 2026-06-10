@@ -14,6 +14,7 @@ class EvalMetrics:
     answer_check_pass_rate: float
     monitor_pass_rate: float
     average_tool_calls: float
+    expected_failure_detection_rate: float = 0.0
     failures_by_category: dict[str, int] = field(default_factory=dict)
 
 
@@ -34,10 +35,15 @@ def summarize_eval(rows: list[dict]) -> EvalMetrics:
     answer_labeled_rows = [row for row in rows if row["answer_must_contain"]]
     answer_passes = sum(1 for row in answer_labeled_rows if row["answer_check_passed"])
     monitor_passes = sum(1 for row in rows if row["monitor_status"] == "pass")
+    expected_failure_rows = [row for row in rows if row.get("expected_failure_categories")]
+    detected_expected_failures = sum(
+        1
+        for row in expected_failure_rows
+        if set(row["expected_failure_categories"]) <= set(row.get("detected_failure_categories", []))
+    )
     failures_by_category: dict[str, int] = {}
     for row in rows:
-        for finding in row["monitor_findings"]:
-            category = finding["category"]
+        for category in row.get("detected_failure_categories", []):
             failures_by_category[category] = failures_by_category.get(category, 0) + 1
 
     return EvalMetrics(
@@ -49,5 +55,9 @@ def summarize_eval(rows: list[dict]) -> EvalMetrics:
         answer_check_pass_rate=safe_rate(answer_passes, len(answer_labeled_rows)),
         monitor_pass_rate=safe_rate(monitor_passes, total),
         average_tool_calls=mean([row["tool_call_count"] for row in rows]) if rows else 0.0,
+        expected_failure_detection_rate=safe_rate(
+            detected_expected_failures,
+            len(expected_failure_rows),
+        ),
         failures_by_category=failures_by_category,
     )

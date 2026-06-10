@@ -36,6 +36,21 @@ def score_answer_terms(answer: str, required_terms: list[str]) -> tuple[bool, li
     return len(matched) == len(required_terms), matched
 
 
+def detected_failure_categories(
+    monitor_findings: list[dict[str, Any]],
+    retrieval_labeled: bool,
+    retrieval_hit: bool,
+    answer_labeled: bool,
+    answer_check_passed: bool,
+) -> list[str]:
+    categories = [finding["category"] for finding in monitor_findings]
+    if retrieval_labeled and not retrieval_hit:
+        categories.append("retrieval_miss")
+    if answer_labeled and not answer_check_passed:
+        categories.append("answer_check_failed")
+    return sorted(set(categories))
+
+
 def load_tasks(path: str | Path) -> list[dict[str, Any]]:
     tasks: list[dict[str, Any]] = []
     for line_no, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
@@ -83,6 +98,14 @@ class EvalRunner:
                 response.answer,
                 answer_must_contain,
             )
+            monitor_findings = [asdict(finding) for finding in report.findings]
+            failure_categories = detected_failure_categories(
+                monitor_findings,
+                retrieval_labeled=bool(expected_files),
+                retrieval_hit=retrieval_hit,
+                answer_labeled=bool(answer_must_contain),
+                answer_check_passed=answer_check_passed,
+            )
             row = {
                 "id": task["id"],
                 "question": task["question"],
@@ -100,7 +123,9 @@ class EvalRunner:
                 "successful_tool_call_count": sum(1 for result in response.tool_results if result.ok),
                 "citation_count": len(response.citations),
                 "monitor_status": report.status,
-                "monitor_findings": [asdict(finding) for finding in report.findings],
+                "monitor_findings": monitor_findings,
+                "detected_failure_categories": failure_categories,
+                "expected_failure_categories": task.get("expected_failure_categories", []),
                 "answer_preview": response.answer[:500],
                 "run_id": response.run_id,
                 "events": event_log.to_dict()["events"],
@@ -153,6 +178,7 @@ def main() -> None:
     print(f"Retrieval hit rate: {metrics.retrieval_hit_rate:.2%}")
     print(f"Answer check pass rate: {metrics.answer_check_pass_rate:.2%}")
     print(f"Monitor pass rate: {metrics.monitor_pass_rate:.2%}")
+    print(f"Expected failure detection rate: {metrics.expected_failure_detection_rate:.2%}")
     print(f"Average tool calls: {metrics.average_tool_calls:.2f}")
     if metrics.failures_by_category:
         print("Failures by category:")

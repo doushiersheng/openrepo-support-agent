@@ -2,6 +2,13 @@
 
 Use these commands for a quick portfolio walkthrough.
 
+Suggested interview flow:
+
+- show the README preview image first
+- launch the Web Demo and run one code-aware question
+- point out role trace, tools, citations, monitor status, and raw events
+- run the benchmark command if the interviewer asks about evaluation
+
 ## 1. Web Demo
 
 ```bash
@@ -100,3 +107,35 @@ Optional:
 ```bash
 python -m openrepo_agent.eval.runner --repo . --workflow multi_agent
 ```
+
+## 7. Negative Cases
+
+```bash
+python -m openrepo_agent.eval.runner --repo . \
+  --tasks benchmarks/openrepo_negative_cases.jsonl \
+  --output .openrepo-agent/negative_eval_report.json
+```
+
+What to point out:
+
+- these tasks intentionally include impossible files and mismatched rubrics
+- the expected failure detection rate should be 100%
+- failure categories include `intent_mismatch`, `retrieval_miss`, and
+  `answer_check_failed`
+
+## 8. Optional Real LLM Synthesis
+
+```bash
+python -m pip install -e ".[llm]"
+$env:DEEPSEEK_API_KEY="sk-..."
+python -m openrepo_agent.cli --repo . --use-llm \
+  "How do I install and run this project?"
+```
+
+What to point out:
+
+- the runtime works without an API key by default
+- the LLM only rewrites the final answer from bounded tool context
+- routing, tool calls, citations, monitor status, and event logs remain visible
+- successful model calls record `llm_enhanced_answer`
+- failed model calls record `llm_error` and fall back to deterministic output
